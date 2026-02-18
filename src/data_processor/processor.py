@@ -46,7 +46,11 @@ def parse_filter_expression(expr: str) -> tuple[str, str]:
     return field, value
 
 
-def apply_filter(rows: list[dict[str, str]], expr: str) -> list[dict[str, str]]:
+def apply_filter(rows: list[dict[str, str]], expr: str, ignore_case: bool = False) -> list[dict[str, str]]:
+    """
+    Aplica filtro no formato campo=valor.
+    Se ignore_case=True, ignora maiúsculas/minúsculas.
+    """
     if not rows:
         return rows
 
@@ -55,8 +59,19 @@ def apply_filter(rows: list[dict[str, str]], expr: str) -> list[dict[str, str]]:
     if field not in rows[0]:
         raise ValueError(f"Campo '{field}' não existe no CSV.")
 
-    return [r for r in rows if r.get(field) == value]
+    target = value.lower() if ignore_case else value
 
+    filtered: list[dict[str, str]] = []
+    for row in rows:
+        current = row.get(field)
+        if current is None:
+            continue
+
+        current_cmp = current.lower() if ignore_case else current
+        if current_cmp == target:
+            filtered.append(row)
+
+    return filtered
 
 def sort_rows(rows: list[dict[str, str]], field: str) -> list[dict[str, str]]:
     if not rows:
@@ -73,3 +88,16 @@ def sort_rows(rows: list[dict[str, str]], field: str) -> list[dict[str, str]]:
             return raw.lower()
 
     return sorted(rows, key=key_func)
+
+def write_csv(rows: list[dict[str, str]], output_path: Path) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if not rows:
+        output_path.write_text("", encoding="utf-8")
+        return
+
+    fieldnames = list(rows[0].keys())
+    with output_path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)

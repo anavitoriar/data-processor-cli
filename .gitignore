@@ -5,3 +5,4 @@ __pycache__/
 *.csv
 report.json
 sample.csv
+saida.csv
